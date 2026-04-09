@@ -16,7 +16,7 @@ class BaseStudioModel:
         self.identity_prompt = identity_prompt
         self.tier = tier
         self.analyzer = ProjectAnalyzer("/home/Taremwastudios/TaremwaStudios")
-        self.api_key = api_key or os.getenv("GROQ_API_KEY") or "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"
+        self.api_key = api_key or os.getenv("GROQ_API_KEY")
         self.api_url = "https://api.groq.com/openai/v1/chat/completions"
         
         # Switched to 8b-instant to avoid 429 Rate Limits.
