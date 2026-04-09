@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Taremwa Studios | Member Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=JetBrains+Mono&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #050505; color: #d4d4d8; }
+        .mono { font-family: 'JetBrains Mono', monospace; }
+        .blueprint-grid {
+            background-image: linear-gradient(rgba(59, 130, 246, 0.05) 1px, transparent 1px),
+                              linear-gradient(90deg, rgba(59, 130, 246, 0.05) 1px, transparent 1px);
+            background-size: 30px 30px;
+        }
+        .studio-card { background: rgba(20, 20, 20, 0.8); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.05); }
+    </style>
+</head>
+<body class="blueprint-grid min-h-screen">
+    <div id="portal-root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+        const API_URL = `http://${window.location.hostname}:8002`;
+
+        const countries = ["Uganda", "Kenya", "Tanzania", "Rwanda", "United States", "United Kingdom", "Germany", "Canada", "Other"];
+
+        function App() {
+            const [view, setView] = useState('login');
+            const [user, setUser] = useState(null);
+            const [inbox, setInbox] = useState([]);
+            const [balance, setBalance] = useState(0);
+            const [accessCode, setAccessCode] = useState("");
+
+            // Form States
+            const [formData, setFormData] = useState({
+                username: '', password: '', real_names: '', country: 'Uganda', address: '', real_email: ''
+            });
+
+            const handleRegister = async (e) => {
+                e.preventDefault();
+                try {
+                    const res = await fetch(`${API_URL}/register`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(formData)
+                    });
+                    const data = await res.json();
+                    if (res.ok) {
+                        alert(`Registration Successful! Your Taremwa ID: ${data.taremwa_id}`);
+                        setView('login');
+                    } else {
+                        alert(data.detail);
+                    }
+                } catch (err) { alert("Cloud Server Offline."); }
+            };
+
+            const handleLogin = async (e) => {
+                e.preventDefault();
+                try {
+                    const res = await fetch(`${API_URL}/login`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ username: formData.username, password: formData.password })
+                    });
+                    const data = await res.json();
+                    if (res.ok) {
+                        setUser(data);
+                        setView('dashboard');
+                        refreshData(data.username);
+                    } else {
+                        alert("Invalid Credentials.");
+                    }
+                } catch (err) { alert("Cloud Server Offline."); }
+            };
+
+            const refreshData = async (username) => {
+                try {
+                    const iRes = await fetch(`${API_URL}/inbox/${username}`);
+                    const iData = await iRes.json();
+                    setInbox(iData.messages);
+
+                    const wRes = await fetch(`${API_URL}/wallet/${username}`);
+                    const wData = await wRes.json();
+                    setBalance(wData.balance);
+                } catch (err) { console.error(err); }
+            };
+
+            const claimCode = async () => {
+                try {
+                    const res = await fetch(`${API_URL}/claim-code/${user.username}`);
+                    const data = await res.json();
+                    setAccessCode(data.code);
+                } catch (err) { alert("Failed to claim code."); }
+            };
+
+            if (view === 'login') {
+                return (
+                    <div className="flex flex-col items-center justify-center min-h-screen p-6">
+                        <div className="studio-card p-8 rounded-3xl w-full max-w-md shadow-2xl">
+                            <h1 className="text-3xl font-black text-white mb-2 tracking-tighter">STUDIO PORTAL</h1>
+                            <p className="text-[10px] text-zinc-500 uppercase tracking-[0.3em] mb-8">Access Core Identity</p>
+                            
+                            <form onSubmit={handleLogin} className="space-y-4">
+                                <input type="text" placeholder="Username" className="w-full bg-black border border-zinc-800 p-4 rounded-xl outline-none focus:border-blue-500 transition-all text-sm" value={formData.username} onChange={e=>setFormData({...formData, username: e.target.value})} />
+                                <input type="password" placeholder="Password" className="w-full bg-black border border-zinc-800 p-4 rounded-xl outline-none focus:border-blue-500 transition-all text-sm" value={formData.password} onChange={e=>setFormData({...formData, password: e.target.value})} />
+                                <button className="w-full bg-white text-black font-bold py-4 rounded-xl hover:bg-zinc-200 transition-all uppercase text-xs tracking-widest">Sign In</button>
+                            </form>
+                            
+                            <button onClick={()=>setView('register')} className="w-full text-zinc-500 text-[10px] font-bold uppercase tracking-widest mt-6 hover:text-white transition-colors">Create Studio Identity</button>
+                        </div>
+                    </div>
+                );
+            }
+
+            if (view === 'register') {
+                return (
+                    <div className="flex flex-col items-center justify-center min-h-screen p-6">
+                        <div className="studio-card p-8 rounded-3xl w-full max-w-lg shadow-2xl">
+                            <h1 className="text-3xl font-black text-white mb-2 tracking-tighter">REGISTER ID</h1>
+                            <p className="text-[10px] text-zinc-500 uppercase tracking-[0.3em] mb-8">Taremwa Studios Network</p>
+                            
+                            <form onSubmit={handleRegister} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <input type="text" placeholder="Desired Username" required className="bg-black border border-zinc-800 p-4 rounded-xl text-sm" value={formData.username} onChange={e=>setFormData({...formData, username: e.target.value})} />
+                                <input type="password" placeholder="Secure Password" required className="bg-black border border-zinc-800 p-4 rounded-xl text-sm" value={formData.password} onChange={e=>setFormData({...formData, password: e.target.value})} />
+                                <input type="text" placeholder="Real Names" required className="bg-black border border-zinc-800 p-4 rounded-xl text-sm md:col-span-2" value={formData.real_names} onChange={e=>setFormData({...formData, real_names: e.target.value})} />
+                                <select className="bg-black border border-zinc-800 p-4 rounded-xl text-sm" value={formData.country} onChange={e=>setFormData({...formData, country: e.target.value})}>
+                                    {countries.map(c => <option key={c}>{c}</option>)}
+                                </select>
+                                <input type="email" placeholder="Real World Email" required className="bg-black border border-zinc-800 p-4 rounded-xl text-sm" value={formData.real_email} onChange={e=>setFormData({...formData, real_email: e.target.value})} />
+                                <textarea placeholder="Physical Address" required className="bg-black border border-zinc-800 p-4 rounded-xl text-sm md:col-span-2 h-24 resize-none" value={formData.address} onChange={e=>setFormData({...formData, address: e.target.value})} />
+                                
+                                <button className="md:col-span-2 bg-blue-600 text-white font-bold py-4 rounded-xl hover:bg-blue-500 transition-all uppercase text-xs tracking-widest mt-4 shadow-xl shadow-blue-900/20">Generate Identity</button>
+                            </form>
+                            
+                            <button onClick={()=>setView('login')} className="w-full text-zinc-500 text-[10px] font-bold uppercase tracking-widest mt-6 hover:text-white transition-colors">Back to Login</button>
+                        </div>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="p-6 md:p-12 max-w-6xl mx-auto">
+                    <header className="flex justify-between items-start mb-12">
+                        <div>
+                            <h1 className="text-4xl font-black text-white tracking-tighter uppercase">{user.real_names}</h1>
+                            <p className="mono text-blue-500 text-sm font-bold mt-1">{user.taremwa_id} | {user.studio_inbox}</p>
+                        </div>
+                        <div className="text-right">
+                            <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold">Wallet Balance</p>
+                            <p className="text-3xl font-black text-white mt-1">${balance.toFixed(2)}</p>
+                        </div>
+                    </header>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        <div className="lg:col-span-2 space-y-6">
+                            <div className="flex items-center justify-between px-2">
+                                <h2 className="text-xs font-bold text-zinc-500 uppercase tracking-[0.4em]">Studio Inbox</h2>
+                                <button onClick={()=>refreshData(user.username)} className="text-blue-500 hover:text-white transition-colors"><i data-lucide="refresh-cw" className="w-4 h-4"></i></button>
+                            </div>
+                            
+                            <div className="space-y-4">
+                                {inbox.length === 0 && <p className="text-zinc-600 text-sm italic px-2">No transmissions received...</p>}
+                                {inbox.map((msg, i) => (
+                                    <div key={i} className="studio-card p-6 rounded-2xl border-l-4 border-l-blue-600">
+                                        <div className="flex justify-between items-start mb-2">
+                                            <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest">{msg.sender}</p>
+                                            <p className="text-[9px] text-zinc-600 mono">{new Date(msg.timestamp).toLocaleString()}</p>
+                                        </div>
+                                        <h3 className="text-sm font-bold text-white mb-2">{msg.subject}</h3>
+                                        <p className="text-xs text-zinc-400 leading-relaxed whitespace-pre-line">{msg.body}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="space-y-8">
+                            <div className="studio-card p-8 rounded-3xl border border-indigo-500/20 shadow-2xl shadow-indigo-900/10">
+                                <h2 className="text-xl font-black text-white mb-2 tracking-tight">AI ACCESS CODE</h2>
+                                <p className="text-xs text-zinc-500 mb-6 leading-relaxed">Claim your one-time 6-digit transmission code to authenticate your session in Studio AI.</p>
+                                
+                                {accessCode ? (
+                                    <div className="bg-black/50 p-6 rounded-2xl border border-blue-500/30 text-center mb-6">
+                                        <p className="text-4xl font-black text-white tracking-[0.5em]">{accessCode}</p>
+                                    </div>
+                                ) : (
+                                    <button onClick={claimCode} className="w-full bg-indigo-600 text-white font-bold py-4 rounded-xl hover:bg-indigo-500 transition-all uppercase text-xs tracking-widest mb-6">Claim Code</button>
+                                )}
+                                
+                                <p className="text-[9px] text-zinc-600 uppercase font-bold text-center tracking-widest">Valid for 5 minutes</p>
+                            </div>
+
+                            <div className="studio-card p-8 rounded-3xl border border-zinc-800">
+                                <h2 className="text-xs font-black text-zinc-500 mb-4 uppercase tracking-[0.3em]">Quick Actions</h2>
+                                <div className="space-y-3">
+                                    <button onClick={()=>setView('login')} className="w-full bg-zinc-900 text-zinc-400 font-bold py-3 rounded-xl hover:bg-zinc-800 transition-all text-[10px] uppercase tracking-widest border border-white/5">Terminal Logout</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('portal-root'));
+        root.render(<App />);
+        
+        // Initialize Lucide icons
+        setTimeout(() => {
+            if (window.lucide) window.lucide.createIcons();
+        }, 100);
+    </script>
+</body>
+</html>
